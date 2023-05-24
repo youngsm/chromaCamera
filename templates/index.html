@@ -169,6 +169,86 @@
             mesh.instanceMatrix.needsUpdate = true; // make sure to update instance matrices
             scene.add( mesh )
         }
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            let meshes = [];
+
+            reader.onload = function(event) {
+                var solid = JSON.parse(event.target.result);
+
+                for (var i = 0; i < solid.meshes.length; i++) {
+                    var mesh = solid.meshes[i];
+                    var positions = mesh.position;
+                    var orientations = mesh.orientation;
+                    if (positions.length == 1) continue;
+
+                    for (var j = 0; j < mesh.submeshes.length; j++) {
+                        var submesh = mesh.submeshes[j];
+                        var solid_color = argbToRgbHex(submesh.color);
+                        var a = decToRgb(solid_color)[1];
+
+                        var solid_data = {
+                            vertices: submesh.vertices,
+                            triangles: submesh.faces,
+                            color: solid_color,
+                            instance_count: positions.length,
+                            instance_positions: positions,
+                            instance_orientations: orientations,
+                            alpha: a / 255.0
+                        };
+                        meshes.push(solid_data);
+                    }
+                }
+                // Clear the scene
+                for (const object of [...scene.children]) {
+                    scene.remove(object);
+                }
+                
+
+                // Parse meshes, adding them to the scene
+                parseMeshes(meshes);
+
+                // Calculate the bounding box of the mesh
+                const box = new THREE.Box3().setFromObject(scene);
+
+                // Get the size (width, height, depth) of the bounding box
+                const size = box.getSize(new THREE.Vector3());
+
+                // Get the center of the bounding box
+                const center = box.getCenter(new THREE.Vector3());
+
+                // Use the size of the bounding box to compute an offset. You may have to adjust this multiplier to fit your specific needs
+                const offset = size.length() * 0.7;
+
+                // Set the camera position based on the center of the bounding box and the offset
+                camera.position.copy(center).add(new THREE.Vector3(0, 0, offset));
+
+                // Set the far plane of the camera based on the size of the scene
+                camera.far = offset * 3;
+                camera.updateProjectionMatrix();
+
+                // Make the camera look at the center of the bounding box
+                camera.lookAt(center);
+            }
+
+            reader.readAsText(file);
+        }
+        function decToRgb(dec) {
+            var B = dec & 255;
+            var G = (dec >> 8) & 255;
+            var R = (dec >> 16) & 255;
+            var A = (dec >> 24) & 255;
+            return [{ R, G, B }, A];
+        }
+
+        function argbToRgbHex(argb) {
+            var B = argb & 255;
+            var G = (argb >> 8) & 255;
+            var R = (argb >> 16) & 255;
+            return (R << 16) + (G << 8) + B;
+        }
+
         function parseMeshes(meshData) {
             for (let i = 0; i < meshData.length; i++) {
                 const solidData = meshData[i];
@@ -226,49 +306,6 @@
                 geometry.computeVertexNormals();
                 console.log('instanced', count)
             }
-        }
-
-        async function handleFileUpload(event) {
-            const file = event.target.files[0];
-            const data = new FormData();
-            data.append('file', file);
-
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: data
-            });
-            const _data = await response.json();
-            const meshData = _data.meshes;
-
-            // Clear the scene
-            for (const object of [...scene.children]) {
-                scene.remove(object);
-            }
-            
-            // Parse meshes, adding them to the scene
-            parseMeshes(meshData);
-
-            // Calculate the bounding box of the mesh
-            const box = new THREE.Box3().setFromObject(scene);
-
-            // Get the size (width, height, depth) of the bounding box
-            const size = box.getSize(new THREE.Vector3());
-
-            // Get the center of the bounding box
-            const center = box.getCenter(new THREE.Vector3());
-
-            // Use the size of the bounding box to compute an offset. You may have to adjust this multiplier to fit your specific needs
-            const offset = size.length() * 0.7;
-
-            // Set the camera position based on the center of the bounding box and the offset
-            camera.position.copy(center).add(new THREE.Vector3(0, 0, offset));
-
-            // Set the far plane of the camera based on the size of the scene
-            camera.far = offset * 3;
-            camera.updateProjectionMatrix();
-
-            // Make the camera look at the center of the bounding box
-            camera.lookAt(center);
         }
 
         document.getElementById('file-input').addEventListener('change', handleFileUpload);
