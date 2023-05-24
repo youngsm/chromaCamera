@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Three.js LoD Example</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <input type="file" id="file-input">
+    
+    <script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+    
+    <script type="importmap">
+    	{
+    		"imports": {
+    			"three": "https://unpkg.com/three/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three/examples/jsm/"
+    		}
+    	}
+    </script>
+
+
+    <script type="module">
+        import * as THREE from 'three';
+        import Stats from 'three/addons/libs/stats.module.js';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+        import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+        import { SimplifyModifier } from 'three/addons/modifiers/SimplifyModifier.js';
+
+        let camera, scene, renderer, controls, stats;
+
+        async function init() {
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true,
+                                                });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            document.body.appendChild(renderer.domElement);
+            window.addEventListener('resize', onWindowResize, false);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 100, 20000);
+            camera.position.z = 30;
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 0.5, 0);
+            controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+
+            controls.update();
+
+            stats = new Stats();
+            document.body.appendChild(stats.dom);
+            
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x443333);
+            
+            // Lights
+            const light1 = new THREE.PointLight(0xffffff, 10000, 0);
+            light1.position.set(0, 20000, 0);
+            scene.add(light1);
+
+            const light2 = new THREE.PointLight(0xffffff, 10000, 0);
+            light2.position.set(10000, 20000, 10000);
+            scene.add(light2);
+
+            const light3 = new THREE.PointLight(0xffffff, 10000, 0);
+            light3.position.set(- 10000, - 20000, - 10000);
+            scene.add(light3);
+
+
+            const pmremGenerator = new THREE.PMREMGenerator(renderer);
+            scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+        }
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            renderer.render(scene, camera);
+
+            stats.update();
+
+        }
+
+        const randomizeMatrix = function () {
+
+            const position = new THREE.Vector3();
+            const rotation = new THREE.Euler();
+            const quaternion = new THREE.Quaternion();
+            const scale = new THREE.Vector3();
+
+            return function (matrix) {
+
+                position.x = Math.random() * 10000 - 20;
+                position.y = Math.random() * 10000 - 20;
+                position.z = Math.random() * 10000 - 20;
+
+                rotation.x = Math.random() * 2 * Math.PI;
+                rotation.y = Math.random() * 2 * Math.PI;
+                rotation.z = Math.random() * 2 * Math.PI;
+
+                quaternion.setFromEuler(rotation);
+
+                scale.x = scale.y = scale.z = Math.random() * 1;
+
+                matrix.compose(position, quaternion, scale);
+            };
+
+        }();
+
+        function makeInstanced( geometry, material, instanceOffsets, instanceOrientations, instanceCount ) {
+            const mesh = new THREE.InstancedMesh( geometry, material, instanceCount );
+            console.log('mesh triangles:', geometry.index.count / 3)
+            const identityMatrix = new THREE.Matrix4();
+            // const matrix = new THREE.Matrix4();
+
+            for ( let i = 0; i < instanceCount; i ++ ) {
+                
+                // Create a new Vector3 for position and add offsets to it
+                let instancePosition = new THREE.Vector3();
+                instancePosition.x = instanceOffsets.array[i * 3];
+                instancePosition.y = instanceOffsets.array[i * 3 + 1];
+                instancePosition.z = instanceOffsets.array[i * 3 + 2];
+                
+                let rotationMatrix = new THREE.Matrix4();
+                rotationMatrix.set(
+                    instanceOrientations.array[i * 9],     instanceOrientations.array[i * 9 + 1], instanceOrientations.array[i * 9 + 2], 0,
+                    instanceOrientations.array[i * 9 + 3], instanceOrientations.array[i * 9 + 4], instanceOrientations.array[i * 9 + 5], 0,
+                    instanceOrientations.array[i * 9 + 6], instanceOrientations.array[i * 9 + 7], instanceOrientations.array[i * 9 + 8], 0,
+                    0, 0, 0, 1
+                );
+                // Compose the final matrix from position and rotation
+                let matrix = new THREE.Matrix4();
+                matrix.compose(
+                    instancePosition,
+                    new THREE.Quaternion().setFromRotationMatrix(rotationMatrix),
+                    new THREE.Vector3(1, 1, 1)  // assuming no scaling
+                );
+                
+                // Set the matrix for the instance
+                // randomizeMatrix(matrix);
+                mesh.setMatrixAt(i, matrix);
+            }
+
+            mesh.instanceMatrix.needsUpdate = true; // make sure to update instance matrices
+            scene.add( mesh )
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            const data = new FormData();
+            data.append('file', file);
+
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: data
+            });
+            const _data = await response.json();
+            const meshData = _data.meshes;
+
+
+            // Clear the scene
+            for (const object of [...scene.children]) {
+                scene.remove(object);
+            }            
+
+            for (let i = 0; i < meshData.length; i++ ) {
+                const solidData = meshData[i];
+                const instanceOffsets = new THREE.BufferAttribute(new Float32Array(solidData.instance_positions.flat()), 3);
+                const instance_orientations = solidData.instance_orientations.flat(2);
+                const instanceOrientations = new THREE.BufferAttribute(new Float32Array(instance_orientations.flat()), 9);
+                const count = solidData.instance_positions.length;
+
+                const vertices = new Float32Array(solidData.vertices.flat());
+                const triangles = new Uint32Array(solidData.triangles.flat());
+                
+                let geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                geometry.setIndex(new THREE.BufferAttribute(triangles, 1));
+
+                // Check the number of faces in the geometry
+                if (geometry.index.array.length > 500*3) {
+                    console.log('simplifying', i)
+                    console.log('before', geometry.index.array.length / 3)
+                    // Create a new instance of the SimplifyModifier
+                    const modifier = new SimplifyModifier();
+                    // Simplify the geometry
+                    const leftover = 200;
+                    const before = geometry.index.array.length / 3;
+                    // before - 2x = leftover - > count = (before - leftover)/2
+                    const count = Math.floor((before - leftover)/2);
+
+                    var simplified = modifier.modify(geometry, count);
+                    console.log(simplified.index.array.length / 3)
+                    geometry = simplified;
+                }
+
+                // Create a single material with the color
+                console.log('alpha', solidData.alpha)
+                const material = new THREE.MeshPhysicalMaterial({
+                                                            color: solidData.color,
+                                                            metalness: 0.33,
+                                                            roughness: 0.0,
+                                                            transmission: 1.0,
+                                                            opacity: 1.0,
+                                                            flatShading: false,  // smooth shading (false) or flat shading (true)
+                                                            transparent: true,
+                                                            transparent: true,
+                                                            ior: 1.5,            // glass
+                                                            thickness: 3.0,
+                                                            depthTest: true,     // on every frame, check if object is behind another
+                                                            depthWrite: true,    // on every frame, write to depth buffer (if depthTest is true)
+                                                            specularIntensity: 1.0,
+                                                            specularColor: solidData.color,
+                                                            side: THREE.FrontSide,
+                                                            visible: true,});
+                material.needsUpdate = true;                                            
+                makeInstanced(geometry, material, instanceOffsets, instanceOrientations, count)
+                geometry.computeVertexNormals();
+                console.log('instanced', count)
+
+            }
+
+            // Calculate the bounding box of the mesh
+            const box = new THREE.Box3().setFromObject(scene);
+
+            // Get the size (width, height, depth) of the bounding box
+            const size = box.getSize(new THREE.Vector3());
+
+            // Get the center of the bounding box
+            const center = box.getCenter(new THREE.Vector3());
+
+            // Use the size of the bounding box to compute an offset. You may have to adjust this multiplier to fit your specific needs
+            const offset = size.length() * 0.7;
+
+            // Set the camera position based on the center of the bounding box and the offset
+            camera.position.copy(center).add(new THREE.Vector3(0, 0, offset));
+
+            // Set the far plane of the camera based on the size of the scene
+            camera.far = offset * 3;
+            camera.updateProjectionMatrix();
+
+            // Make the camera look at the center of the bounding box
+            camera.lookAt(center);
+        }
+
+        document.getElementById('file-input').addEventListener('change', handleFileUpload);
+
+        init();
+        animate();
+    </script>
+</body>
+
+</html>
