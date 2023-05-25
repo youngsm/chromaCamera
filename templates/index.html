@@ -2,21 +2,31 @@
 <html>
 
 <head>
-    <title>Three.js LoD Example</title>
+    <title>chroma-cam</title>
     <style>
-        body {
+        * {
             margin: 0;
-        }
-
-        canvas {
-            display: block;
+            padding: 0;
+            box-sizing: border-box;
+            background-color: transparent;
         }
     </style>
+    <link rel="stylesheet" href="../static/css/button.css">
 </head>
 
 <body>
-    <input type="file" id="file-input">
-    
+    <div class="header">
+    <h1>chroma-cam</h1>
+    <div class='file'>
+        <label for='input-file'>upload .json</label>
+        <input id='input-file' type='file' />
+    </div>
+        <label for="demo-button-dichroicon">load dichroicon</label>
+        <button id="demo-button-dichroicon" hidden></button>
+        <label for="demo-button-theia">load theia</label>
+        <button id="demo-button-theia" hidden></button>
+    </div>
+
     <script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
     
     <script type="importmap">
@@ -42,9 +52,10 @@
 
         async function init() {
             // Renderer
-            renderer = new THREE.WebGLRenderer({ antialias: true,
-                                                });
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            var header = document.querySelector(".header");
+            var headerHeight = header.offsetHeight;
+            renderer.setSize(window.innerWidth, window.innerHeight-headerHeight);
             renderer.shadowMap.enabled = true;
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
             document.body.appendChild(renderer.domElement);
@@ -176,12 +187,10 @@
 
             reader.onload = function(event) {
                 var solid = JSON.parse(event.target.result);
-
                 for (var i = 0; i < solid.meshes.length; i++) {
                     var mesh = solid.meshes[i];
                     var positions = mesh.position;
                     var orientations = mesh.orientation;
-                    if (positions.length == 1) continue;
 
                     for (var j = 0; j < mesh.submeshes.length; j++) {
                         var submesh = mesh.submeshes[j];
@@ -208,6 +217,9 @@
 
                 // Parse meshes, adding them to the scene
                 parseMeshes(meshes);
+
+                // Remove bounding mesh of scene, which is usually a big block of the targer medium (LABPPO, water, ...)
+                removeBoundingMeshes(scene);
 
                 // Calculate the bounding box of the mesh
                 const box = new THREE.Box3().setFromObject(scene);
@@ -265,7 +277,7 @@
                 geometry.setIndex(new THREE.BufferAttribute(triangles, 1));
 
                 // Check the number of faces in the geometry
-                if (geometry.index.array.length > 500 * 3) {
+                if (geometry.index.array.length > 500 * 3 & solidData.instance_positions.flat().length > 1000 * 3) {
                     console.log('simplifying', i)
                     console.log('before', geometry.index.array.length / 3)
                     // Create a new instance of the SimplifyModifier
@@ -273,7 +285,7 @@
                     // Simplify the geometry
                     const leftover = 200;
                     const before = geometry.index.array.length / 3;
-                    // before - 2x = leftover - > count = (before - leftover)/2
+                    // before - 2x = leftover -> count = (before - leftover)/2
                     const count = Math.floor((before - leftover) / 2);
 
                     var simplified = modifier.modify(geometry, count);
@@ -308,7 +320,50 @@
             }
         }
 
-        document.getElementById('file-input').addEventListener('change', handleFileUpload);
+
+    function removeBoundingMeshes(scene) {
+        const sceneBox = new THREE.Box3().setFromObject(scene);
+        for (const object of [...scene.children]) {
+            if (object.isMesh) {
+                const objectBox = new THREE.Box3().setFromObject(object);
+                if (objectBox.equals(sceneBox)) {
+                    console.log('removing bounding mesh (usually the detctor target)')
+                    scene.remove(object);
+                }
+            }
+        }
+    }
+
+
+        document.getElementById('input-file').addEventListener('change', function (event) {
+            document.querySelector('.file label').textContent = event.target.files[0].name;
+            handleFileUpload(event);
+        });
+        // demo
+        document.getElementById('demo-button-dichroicon').addEventListener('click', function () {
+                fetch('../static/geo/dichroicon.json')
+                    .then(response => response.json())
+                    .then(data => {
+                        var event = {
+                            target: {
+                                files: [new File([JSON.stringify(data)], "dichroicon.json")]
+                            }
+                        };
+                        handleFileUpload(event);
+                    });
+            });
+        document.getElementById('demo-button-theia').addEventListener('click', function () {
+                fetch('../static/geo/theia_full.json')
+                    .then(response => response.json())
+                    .then(data => {
+                        var event = {
+                            target: {
+                                files: [new File([JSON.stringify(data)], "theia_full.json")]
+                            }
+                        };
+                        handleFileUpload(event);
+                    });
+        });
 
         init();
         animate();
