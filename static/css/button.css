@@ -1,0 +1,177 @@
+/* stolen from https: //codepen.io/onluiz/pen/eLgOKj */
+
+.header {
+    align-items: center;
+    font-family: 'courier new', sans-serif;
+    font-size: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 10px 10px 6px 10px;
+    background: #443333;
+    color: hsl(36, 58%, 87%);
+}
+
+html,
+body,
+.container {
+    height: 100%;
+    width: 100%;
+    background-color: transparent;
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    background-color: transparent;
+}
+
+.variants {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.variants>div {
+    margin-right: 5px;
+}
+
+.variants>div:last-of-type {
+    margin-right: 0;
+}
+
+.file {
+    position: relative;
+    display: flex;
+    justify-content: right;
+    align-items: right;
+    background-color: #443333;
+    padding: 15 15 15 15;
+}
+
+.file>input[type='file'] {
+    display: none
+}
+
+.file>label, .demo-button {
+    font-family: 'courier new', sans-serif;
+    font-size: 1rem;
+    font-weight: 300;
+    cursor: pointer;
+    outline: 0;
+    user-select: none;
+    /* border-color: transparent; */
+    border-color: rgb(119, 91, 91) rgb(105, 84, 84) rgb(86, 70, 70);
+    border-style: solid;
+    /* border-radius: 4px; */
+    /* border-width: 1px; */
+    /* background-color: #775b5b;  */
+    color: hsl(36, 58%, 87%);
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
+.file>label:hover {
+    border-color: hsl(0, 0%, 21%);
+}
+
+.file>label:active {
+    background-color: #443333;
+}
+
+.file>label>i {
+    padding-right: 5px;
+}
+
+.file--upload>label {
+    color: hsl(204, 86%, 53%);
+    border-color: hsl(204, 86%, 53%);
+}
+
+.file--upload>label:hover {
+    border-color: hsl(204, 86%, 53%);
+    background-color: hsl(204, 86%, 96%);
+}
+
+.file--upload>label:active {
+    background-color: hsl(204, 86%, 91%);
+}
+
+.file--uploading>label {
+    color: hsl(48, 100%, 67%);
+    border-color: hsl(48, 100%, 67%);
+}
+
+.file--uploading>label>i {
+    animation: pulse 5s infinite;
+}
+
+.file--uploading>label:hover {
+    border-color: hsl(48, 100%, 67%);
+    background-color: hsl(48, 100%, 96%);
+}
+
+.file--uploading>label:active {
+    background-color: hsl(48, 100%, 91%);
+}
+
+.file--success>label {
+    color: hsl(141, 71%, 48%);
+    border-color: hsl(141, 71%, 48%);
+}
+
+.file--success>label:hover {
+    border-color: hsl(141, 71%, 48%);
+    background-color: hsl(141, 71%, 96%);
+}
+
+.file--success>label:active {
+    background-color: hsl(141, 71%, 91%);
+}
+
+.file--danger>label {
+    color: hsl(348, 100%, 61%);
+    border-color: hsl(348, 100%, 61%);
+}
+
+.file--danger>label:hover {
+    border-color: hsl(348, 100%, 61%);
+    background-color: hsl(348, 100%, 96%);
+}
+
+.file--danger>label:active {
+    background-color: hsl(348, 100%, 91%);
+}
+
+.file--disabled {
+    cursor: not-allowed;
+}
+
+.file--disabled>label {
+    border-color: #e6e7ef;
+    color: #e6e7ef;
+    pointer-events: none;
+}
+
+@keyframes pulse {
+    0% {
+        color: hsl(48, 100%, 67%);
+    }
+
+    50% {
+        color: hsl(48, 100%, 38%);
+    }
+
+    100% {
+        color: hsl(48, 100%, 67%);
+    }
+}
