@@ -3,6 +3,8 @@ from typing import List
 import numpy as np
 import re
 
+# TODO: document
+
 
 def hex_to_rgb(dec):
     B = dec & 255
@@ -18,7 +20,7 @@ def remove_strings(json_string):
     return re.sub(pattern, replacer, json_string)
 
 
-class SubMesh:
+class jsonSubMesh:
     def __init__(self, vertices: List[List[float]], faces: List[List[int]], color: int):
         self.vertices = vertices
         self.faces = faces
@@ -28,13 +30,13 @@ class SubMesh:
         return f"SubMesh(vertices={len(self.vertices)}, faces={len(self.faces)}, color={hex_to_rgb(self.color)[0]})"
 
 
-class Mesh:
+class jsonMesh:
     def __init__(self, vertices: List[List[float]],
-                        faces: List[List[int]],
-                        colors: List[int],
-                        positions:List[List[float]]=[[0,0,0]],
-                        orientations:List[List[float]]=[np.eye(3).tolist()],
-                        ):
+                 faces: List[List[int]],
+                 colors: List[int],
+                 positions: List[List[float]] = [[0, 0, 0]],
+                 orientations: List[List[float]] = [np.eye(3).tolist()],
+                 ):
         self.positions = positions
         self.orientations = orientations  # Quaternion orientation, can be updated later
         self.submeshes = self.create_submeshes(vertices, faces, colors)
@@ -42,42 +44,21 @@ class Mesh:
     def create_submeshes(
             self, vertices: List[List[float]],
             faces: List[List[int]],
-            colors: List[int]) -> List[SubMesh]:
+            colors: List[int]) -> List[jsonSubMesh]:
         color_dict = {}
 
         for i, face in enumerate(faces):
             color = colors[i]
             if color not in color_dict:
-                color_dict[color] = []  
+                color_dict[color] = []
             color_dict[color].append(face)
 
         submeshes = []
         for color, faces in color_dict.items():
-            submesh = SubMesh(vertices, faces, color)
+            submesh = jsonSubMesh(vertices, faces, color)
             submeshes.append(submesh)
 
         return submeshes
-    
-    def plot(self, plotter=None):
-        import pyvista as pv
-        
-        show = True
-        if plotter is None:
-            plotter = pv.Plotter(lighting="three lights")
-            show = False
-
-        for submesh in self.submeshes:
-            vertices = np.array(submesh.vertices)
-            # The "3" is the number of vertices in each face
-            faces = np.hstack([[3] + face for face in submesh.faces])
-            mesh = pv.PolyData(vertices, faces)
-            plotter.add_mesh(mesh, 
-                             color=hex_to_rgb(submesh.color)[0],
-                             opacity=hex_to_rgb(submesh.color)[1]/255
-                            )  # Convert the uint16 color to RGB
-
-        if show:
-            plotter.show()
 
     def to_json(self, as_string=True) -> str:
         submeshes_json = [
@@ -92,26 +73,31 @@ class Mesh:
 
     def __repr__(self):
         return f"Mesh(position={self.position}, orientation={self.orientation}, submeshes={self.submeshes})"
-    
-class Geometry:
+
+
+class jsonGeometry:
     def __init__(self, geo):
         self.unique_solids = list(set(geo.solids))
         self.unique_meshes = self.to_meshes(geo)
 
     def to_meshes(self, geo):
-        solid_orientations = {i: {"displacement": [], "rotation": []} for i in range(len(self.unique_solids))}
+
+        solid_orientations = {i: {"displacement": [], "rotation": []}
+                              for i in range(len(self.unique_solids))}
 
         for i, unique_solid in enumerate(self.unique_solids):
             mask = np.asarray(geo.solids) == unique_solid
-            solid_orientations[i]["displacement"] = np.round(np.asarray(self.solid_displacements)[mask], 6).tolist()
-            solid_orientations[i]["rotation"] = np.round(np.asarray(self.solid_rotations)[mask], 6).tolist()
-                    
+            solid_orientations[i]["displacement"] = np.round(
+                np.asarray(geo.solid_displacements)[mask], 6).tolist()
+            solid_orientations[i]["rotation"] = np.round(
+                np.asarray(geo.solid_rotations)[mask], 6).tolist()
+
         return [
-            Mesh(np.round(solid.mesh.vertices, 6).tolist(),
-                 solid.mesh.triangles.tolist(),
-                 solid.color.tolist(),
-                 solid_orientations[i]["displacement"],
-                 solid_orientations[i]["rotation"])
+            jsonMesh(np.round(solid.mesh.vertices, 6).tolist(),
+                     solid.mesh.triangles.tolist(),
+                     solid.color.tolist(),
+                     solid_orientations[i]["displacement"],
+                     solid_orientations[i]["rotation"])
             for i, solid in enumerate(self.unique_solids)
         ]
 
