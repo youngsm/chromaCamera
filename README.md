@@ -6,7 +6,7 @@ A demo of this tool can be found on my website at [https://samy.ng/chroma-cam](h
 
 Like in `chroma`, solid instancing has been implemented, so that no single triangle in a scene is unneccesarily duplicated more than once. This allows for very large scenes using copies of the same couple meshes to be rendered quickly, and relatively small json files. For example, a full neutrino detector geometry outfitted with around 60,000 PMTs and 30,000 light concentrators is rendered on my M1 MacBook Pro at around 40 fps in Microsoft Edge, and has a json file size of 7.1 MB. In `chroma` this entire geometry loaded on the GPU requires around 20 GB of VRAM. In the browser, only around 80 MB of memory is used.
 
-To aid in performance, geometries with large numbers of triangles are automatically simplified using the [three.js](https://threejs.org/) library's [SimplifyModifier](https://threejs.org/docs/#examples/en/modifiers/SimplifyModifier) after being uploaded.
+To aid in performance, geometries with many large meshes are automatically simplified using the [three.js](https://threejs.org/) library's [SimplifyModifier](https://threejs.org/docs/#examples/en/modifiers/SimplifyModifier) after being uploaded.
 
 ## Usage
 
