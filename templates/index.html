@@ -16,11 +16,11 @@
 
 <body>
     <div class="header">
-    <h1>chroma-cam</h1>
-    <div class='file'>
-        <label for='input-file'>upload .json</label>
-        <input id='input-file' type='file' />
-    </div>
+        <h1>chroma-cam</h1>
+        <div class='file'>
+            <label for='input-file'>upload .json</label>
+            <input id='input-file' type='file' />
+        </div>
         <label for="demo-button-dichroicon">load dichroicon</label>
         <button id="demo-button-dichroicon" hidden></button>
         <label for="demo-button-theia">load theia</label>
@@ -28,7 +28,7 @@
     </div>
 
     <script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
-    
+
     <script type="importmap">
     	{
     		"imports": {
@@ -42,7 +42,6 @@
     <script type="module">
         import * as THREE from 'three';
         import Stats from 'three/addons/libs/stats.module.js';
-        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
         import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
@@ -55,7 +54,7 @@
             renderer = new THREE.WebGLRenderer({ antialias: true });
             var header = document.querySelector(".header");
             var headerHeight = header.offsetHeight;
-            renderer.setSize(window.innerWidth, window.innerHeight-headerHeight);
+            renderer.setSize(window.innerWidth, window.innerHeight - headerHeight);
             renderer.shadowMap.enabled = true;
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
             document.body.appendChild(renderer.domElement);
@@ -76,12 +75,12 @@
 
             stats = new Stats();
             document.body.appendChild(stats.dom);
-            
-            
+
+
             // Scene
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x443333);
-            
+
             // Lights
             const light1 = new THREE.PointLight(0xffffff, 10000, 0);
             light1.position.set(0, 20000, 0);
@@ -117,49 +116,23 @@
 
         }
 
-        const randomizeMatrix = function () {
-
-            const position = new THREE.Vector3();
-            const rotation = new THREE.Euler();
-            const quaternion = new THREE.Quaternion();
-            const scale = new THREE.Vector3();
-
-            return function (matrix) {
-
-                position.x = Math.random() * 10000 - 20;
-                position.y = Math.random() * 10000 - 20;
-                position.z = Math.random() * 10000 - 20;
-
-                rotation.x = Math.random() * 2 * Math.PI;
-                rotation.y = Math.random() * 2 * Math.PI;
-                rotation.z = Math.random() * 2 * Math.PI;
-
-                quaternion.setFromEuler(rotation);
-
-                scale.x = scale.y = scale.z = Math.random() * 1;
-
-                matrix.compose(position, quaternion, scale);
-            };
-
-        }();
-
-        function makeInstanced( geometry, material, instanceOffsets, instanceOrientations, instanceCount ) {
-            const mesh = new THREE.InstancedMesh( geometry, material, instanceCount );
+        function makeInstanced(geometry, material, instanceOffsets, instanceOrientations, instanceCount) {
+            const mesh = new THREE.InstancedMesh(geometry, material, instanceCount);
             console.log('mesh triangles:', geometry.index.count / 3)
             const identityMatrix = new THREE.Matrix4();
             // const matrix = new THREE.Matrix4();
 
-            for ( let i = 0; i < instanceCount; i ++ ) {
-                
+            for (let i = 0; i < instanceCount; i++) {
+
                 // Create a new Vector3 for position and add offsets to it
                 let instancePosition = new THREE.Vector3();
                 instancePosition.x = instanceOffsets.array[i * 3];
                 instancePosition.y = instanceOffsets.array[i * 3 + 1];
                 instancePosition.z = instanceOffsets.array[i * 3 + 2];
-                
+
                 let rotationMatrix = new THREE.Matrix4();
                 rotationMatrix.set(
-                    instanceOrientations.array[i * 9],     instanceOrientations.array[i * 9 + 1], instanceOrientations.array[i * 9 + 2], 0,
+                    instanceOrientations.array[i * 9], instanceOrientations.array[i * 9 + 1], instanceOrientations.array[i * 9 + 2], 0,
                     instanceOrientations.array[i * 9 + 3], instanceOrientations.array[i * 9 + 4], instanceOrientations.array[i * 9 + 5], 0,
                     instanceOrientations.array[i * 9 + 6], instanceOrientations.array[i * 9 + 7], instanceOrientations.array[i * 9 + 8], 0,
                     0, 0, 0, 1
@@ -171,21 +144,20 @@
                     new THREE.Quaternion().setFromRotationMatrix(rotationMatrix),
                     new THREE.Vector3(1, 1, 1)  // assuming no scaling
                 );
-                
+
                 // Set the matrix for the instance
-                // randomizeMatrix(matrix);
                 mesh.setMatrixAt(i, matrix);
             }
 
             mesh.instanceMatrix.needsUpdate = true; // make sure to update instance matrices
-            scene.add( mesh )
+            scene.add(mesh)
         }
         function handleFileUpload(event) {
             const file = event.target.files[0];
             const reader = new FileReader();
             let meshes = [];
 
-            reader.onload = function(event) {
+            reader.onload = function (event) {
                 var solid = JSON.parse(event.target.result);
                 for (var i = 0; i < solid.meshes.length; i++) {
                     var mesh = solid.meshes[i];
@@ -213,12 +185,12 @@
                 for (const object of [...scene.children]) {
                     scene.remove(object);
                 }
-                
+
 
                 // Parse meshes, adding them to the scene
                 parseMeshes(meshes);
 
-                // Remove bounding mesh of scene, which is usually a big block of the targer medium (LABPPO, water, ...)
+                // Remove bounding meshes
                 removeBoundingMeshes(scene);
 
                 // Calculate the bounding box of the mesh
@@ -231,10 +203,10 @@
                 const center = box.getCenter(new THREE.Vector3());
 
                 // Use the size of the bounding box to compute an offset. You may have to adjust this multiplier to fit your specific needs
-                const offset = size.length() * 0.7;
+                const offset = size.length() * 1;
 
                 // Set the camera position based on the center of the bounding box and the offset
-                camera.position.copy(center).add(new THREE.Vector3(0, 0, offset));
+                camera.position.copy(center).add(new THREE.Vector3(-offset, -offset, 0));
 
                 // Set the far plane of the camera based on the size of the scene
                 camera.far = offset * 3;
@@ -279,7 +251,6 @@
                 // Check the number of faces in the geometry
                 if (geometry.index.array.length > 500 * 3 & solidData.instance_positions.flat().length > 1000 * 3) {
                     console.log('simplifying', i)
-                    console.log('before', geometry.index.array.length / 3)
                     // Create a new instance of the SimplifyModifier
                     const modifier = new SimplifyModifier();
                     // Simplify the geometry
@@ -293,8 +264,14 @@
                     geometry = simplified;
                 }
 
+                    
+                if (solidData.instance_positions.flat().length > 1000 * 3) {
+                    var side = THREE.FrontSide;
+                } else {
+                    var side = THREE.DoubleSide;
+                }
+
                 // Create a single material with the color
-                console.log('alpha', solidData.alpha)
                 const material = new THREE.MeshPhysicalMaterial({
                     color: solidData.color,
                     metalness: 0.33,
@@ -310,30 +287,28 @@
                     depthWrite: true,    // on every frame, write to depth buffer (if depthTest is true)
                     specularIntensity: 1.0,
                     specularColor: solidData.color,
-                    side: THREE.FrontSide,
+                    side: side,
                     visible: true,
                 });
-                material.needsUpdate = true;
+                // material.needsUpdate = true;
                 makeInstanced(geometry, material, instanceOffsets, instanceOrientations, count)
                 geometry.computeVertexNormals();
                 console.log('instanced', count)
             }
         }
 
-
-    function removeBoundingMeshes(scene) {
-        const sceneBox = new THREE.Box3().setFromObject(scene);
-        for (const object of [...scene.children]) {
-            if (object.isMesh) {
-                const objectBox = new THREE.Box3().setFromObject(object);
-                if (objectBox.equals(sceneBox)) {
-                    console.log('removing bounding mesh (usually the detctor target)')
-                    scene.remove(object);
+      function removeBoundingMeshes(scene) {
+            const sceneBox = new THREE.Box3().setFromObject(scene);
+            for (const object of [...scene.children]) {
+                if (object.isMesh) {
+                    const objectBox = new THREE.Box3().setFromObject(object);
+                    if (objectBox.equals(sceneBox)) {
+                        console.log('removing bounding mesh (usually the detctor target)')
+                        scene.remove(object);
+                    }
                 }
             }
         }
-    }
-
 
         document.getElementById('input-file').addEventListener('change', function (event) {
             document.querySelector('.file label').textContent = event.target.files[0].name;
@@ -341,12 +316,12 @@
         });
         // demo
         document.getElementById('demo-button-dichroicon').addEventListener('click', function () {
-                fetch('../static/geo/dichroicon.json')
+                fetch('../static/geo/benchtop_dichroicon.json')
                     .then(response => response.json())
                     .then(data => {
                         var event = {
                             target: {
-                                files: [new File([JSON.stringify(data)], "dichroicon.json")]
+                                files: [new File([JSON.stringify(data)], "benchtop_dichroicon.json")]
                             }
                         };
                         handleFileUpload(event);
